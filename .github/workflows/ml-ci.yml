@@ -39,3 +39,14 @@ jobs:
 
       - name: Run automated ML tests
         run: python -m unittest test_ml_pipeline.py -v
+
+      - name: Upload validated ML artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: telecom-churn-ml-artifacts
+          path: |
+            telecom_churn_model.pkl
+            metrics.json
+            telecom_churn.csv
+          if-no-files-found: error
+          retention-days: 7

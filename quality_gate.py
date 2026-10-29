@@ -31,3 +31,4 @@ if accuracy < MINIMUM_ACCURACY:
 print("QUALITY GATE PASSED")
 print("Model performance satisfies the required threshold.")
 sys.exit(0)
+
