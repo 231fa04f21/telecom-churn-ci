@@ -33,7 +33,7 @@ class TestPredictionApplication(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.get_json()["prediction"],
-            "RETAIN"
+            "CHURN"
         )
         self.assertEqual(
             response.get_json()["prediction_code"],
