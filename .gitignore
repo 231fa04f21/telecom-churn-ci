@@ -3,6 +3,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Generated ML Artifacts (created during CI / runtime)
+telecom_churn_model.pkl
+metrics.json
+
 # Environments
 .venv/
 venv/

@@ -37,3 +37,4 @@ if __name__ == "__main__":
     print(f"Data Used  : {sample_data} MB")
     print(f"Prediction : {prediction}")
     print("========================================")
+

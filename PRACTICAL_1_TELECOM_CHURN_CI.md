@@ -363,3 +363,4 @@ Capture and preserve screenshots of:
 
 ### Q6: Does this setup represent a complete CI/CD pipeline?
 **Answer**: No. This practical demonstrates **Continuous Integration (CI)**, focusing on automated code checkout and test verification. Continuous Deployment (CD), model packaging (Docker/GHCR), and cloud hosting are subsequent stages.
+
