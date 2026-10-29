@@ -11,8 +11,23 @@ import time
 import uuid
 import joblib
 import pandas as pd
-from flask import Flask, jsonify, request, g, Response
+from flask import Flask, jsonify, request, g, Response, render_template_string
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+try:
+    from drift.service import (
+        detect_drift as run_detect_drift,
+        simulate_data as run_simulate_data,
+        retrain_candidate as run_retrain_candidate,
+        approve_candidate as run_approve_candidate,
+        DRIFT_REPORT,
+        RETRAINING_METRICS,
+    )
+except ImportError:
+    run_detect_drift = None
+    run_simulate_data = None
+    run_retrain_candidate = None
+    run_approve_candidate = None
 
 # Step 4 - Configure the Application Logger (stdout for Docker/Render capture)
 logging.basicConfig(
@@ -420,6 +435,395 @@ def predict():
             "error": "Prediction Error",
             "detail": "Prediction failed during inference"
         }), 500
+
+
+# Practical 15: Data Drift & Retraining HTML Dashboard
+DASHBOARD_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telecom Churn MLOps — Data Drift & Retraining Control Center</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-heading: #f0f6fc;
+      --primary: #2563eb;
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.15);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { color: var(--text-heading); font-size: 22px; font-weight: 600; }
+    .subtitle { color: #8b949e; font-size: 13px; margin-top: 4px; }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success); }
+    .badge-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-neutral { background: rgba(139, 148, 158, 0.2); color: #8b949e; border: 1px solid #30363d; }
+    
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .card-title { font-size: 12px; color: #8b949e; text-transform: uppercase; margin-bottom: 8px; }
+    .card-value { font-size: 24px; font-weight: 700; color: var(--text-heading); }
+    .card-meta { font-size: 13px; color: #8b949e; margin-top: 6px; }
+
+    .toolbar {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      padding: 10px 16px;
+      border-radius: 6px;
+      border: none;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s ease;
+    }
+    .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-green { background: #16a34a; }
+    .btn-red { background: #dc2626; }
+    .btn-blue { background: #2563eb; }
+    .btn-purple { background: #7c3aed; }
+    .btn-emerald { background: #059669; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: rgba(255, 255, 255, 0.02);
+      color: #8b949e;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    tr:hover { background: rgba(255, 255, 255, 0.03); }
+
+    .console {
+      background: #090d13;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #38bdf8;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 16px;
+    }
+    .links a {
+      color: #58a6ff;
+      text-decoration: none;
+      margin-right: 16px;
+      font-size: 13px;
+    }
+    .links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Telecom Churn MLOps — Data Drift & Retraining Control Center</h1>
+        <div class="subtitle">Practical 15 | Two-Sample Kolmogorov-Smirnov (KS) Test & Quality Gate Automation</div>
+      </div>
+      <div>
+        <span id="overall-badge" class="badge badge-neutral">Checking Status...</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Production Model</div>
+        <div class="card-value" style="font-size: 18px;">telecom_churn_model.pkl</div>
+        <div class="card-meta">Baseline Records: <strong style="color: #fff;">243,553</strong></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Input Sample</div>
+        <div class="card-value" id="kpi-rows">1,000 rows</div>
+        <div class="card-meta">Batch Status: <strong id="kpi-mode" style="color: #fff;">Active</strong></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Drift Status</div>
+        <div class="card-value" id="kpi-drifted-count">0 / 6 Features</div>
+        <div class="card-meta">KS Significance Threshold: <strong style="color: #fff;">p &lt; 0.05</strong></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Model Quality Gate</div>
+        <div class="card-value" style="color: #38bdf8;">Accuracy &ge; 50.0%</div>
+        <div class="card-meta" id="kpi-candidate-accuracy">Candidate: <strong>Ready</strong></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <span style="font-size: 12px; font-weight: 600; color: #8b949e;">ONE-CLICK ACTIONS:</span>
+      <button class="btn btn-green" onclick="simulateData('stable')">1. Simulate Stable Batch</button>
+      <button class="btn btn-red" onclick="simulateData('drift')">2. Simulate Drifted Batch</button>
+      <button class="btn btn-blue" onclick="detectDrift()">3. Run KS Drift Test</button>
+      <button class="btn btn-purple" onclick="retrainModel()">4. Retrain Candidate</button>
+      <button class="btn btn-emerald" onclick="approveCandidate()">5. Approve & Promote</button>
+    </div>
+
+    <div class="card" style="margin-bottom: 24px;">
+      <h2 style="font-size: 16px; color: var(--text-heading); margin-bottom: 8px;">Feature Distribution Analysis (KS Hypothesis Test)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Feature Name</th>
+            <th>Reference Mean</th>
+            <th>Recent Mean</th>
+            <th>KS Statistic (D)</th>
+            <th>P-Value (p)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="features-table-body">
+          <tr><td colspan="6" style="text-align: center; color: #8b949e;">Loading drift report...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size: 15px; color: var(--text-heading);">MLOps Execution Console</h2>
+      <div id="console-output" class="console">Ready. Click any action button above to demonstrate drift detection and conditional retraining to your faculty.</div>
+      <div class="links" style="margin-top: 14px;">
+        <a href="/docs" target="_blank">&#128214; Swagger API Docs (/docs)</a>
+        <a href="/metrics" target="_blank">&#128202; Prometheus Metrics (/metrics)</a>
+        <a href="/health" target="_blank">&#9889; Health (/health)</a>
+        <a href="/api/drift/report" target="_blank">&#128203; Raw Drift JSON Report</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function log(msg) {
+      const el = document.getElementById("console-output");
+      const time = new Date().toLocaleTimeString();
+      el.textContent = `[${time}] ${msg}\\n` + el.textContent;
+    }
+
+    async function loadReport() {
+      try {
+        const res = await fetch('/api/drift/report');
+        const data = await res.json();
+        renderReport(data);
+      } catch (err) {
+        log("Error loading drift report: " + err);
+      }
+    }
+
+    function renderReport(data) {
+      const overallBadge = document.getElementById("overall-badge");
+      if (data.overall_drift) {
+        overallBadge.className = "badge badge-danger";
+        overallBadge.textContent = "DRIFT DETECTED";
+      } else {
+        overallBadge.className = "badge badge-success";
+        overallBadge.textContent = "HEALTHY (NO DRIFT)";
+      }
+
+      document.getElementById("kpi-drifted-count").textContent = `${data.drifted_feature_count} / 6 Features`;
+
+      const tbody = document.getElementById("features-table-body");
+      tbody.innerHTML = "";
+
+      for (const [name, stats] of Object.entries(data.features)) {
+        const tr = document.createElement("tr");
+        const statusBadge = stats.drift_detected 
+          ? `<span class="badge badge-danger">DRIFTED (p < 0.05)</span>`
+          : `<span class="badge badge-success">STABLE</span>`;
+        
+        tr.innerHTML = `
+          <td><strong>${name}</strong></td>
+          <td>${stats.reference_mean.toLocaleString()}</td>
+          <td>${stats.current_mean.toLocaleString()}</td>
+          <td>${stats.ks_statistic.toFixed(4)}</td>
+          <td>${stats.p_value.toFixed(6)}</td>
+          <td>${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function simulateData(mode) {
+      log(`Simulating ${mode.toUpperCase()} customer batch...`);
+      try {
+        const res = await fetch(`/api/drift/simulate?mode=${mode}`, { method: 'POST' });
+        const data = await res.json();
+        log(`Batch generated successfully (Mode: ${mode}, Rows: ${data.rows}). Running drift analysis...`);
+        renderReport(data.report);
+      } catch (err) {
+        log(`Simulation error: ${err}`);
+      }
+    }
+
+    async function detectDrift() {
+      log("Running two-sample Kolmogorov-Smirnov statistical tests on all 6 features...");
+      try {
+        const res = await fetch('/api/drift/detect', { method: 'POST' });
+        const data = await res.json();
+        renderReport(data);
+        log(`KS analysis complete. Overall drift: ${data.overall_drift}. Flagged features: [${data.drifted_features.join(', ')}]`);
+      } catch (err) {
+        log(`Drift test error: ${err}`);
+      }
+    }
+
+    async function retrainModel() {
+      log("Initiating conditional retraining...");
+      try {
+        const res = await fetch('/api/drift/retrain', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'skipped') {
+          log(`Retraining skipped: ${data.message}`);
+        } else {
+          log(`Candidate trained on ${data.training_rows.toLocaleString()} rows! Candidate Accuracy: ${(data.candidate_accuracy * 100).toFixed(2)}%`);
+          document.getElementById("kpi-candidate-accuracy").innerHTML = `Candidate: <strong style="color: #22c55e;">${(data.candidate_accuracy * 100).toFixed(2)}%</strong>`;
+        }
+      } catch (err) {
+        log(`Retraining error: ${err}`);
+      }
+    }
+
+    async function approveCandidate() {
+      log("Evaluating candidate model against Quality Gate (Accuracy >= 50.0%)...");
+      try {
+        const res = await fetch('/api/drift/approve', { method: 'POST' });
+        const data = await res.json();
+        log(`Quality Gate Result: ${data.message}`);
+        if (data.promoted) {
+          log("Active production model hot-reloaded successfully in memory!");
+        }
+      } catch (err) {
+        log(`Approval error: ${err}`);
+      }
+    }
+
+    window.onload = loadReport;
+  </script>
+</body>
+</html>
+"""
+
+
+@app.get("/drift")
+@app.get("/dashboard")
+def drift_dashboard():
+    return render_template_string(DASHBOARD_HTML)
+
+
+@app.get("/api/drift/report")
+def api_drift_report():
+    if run_detect_drift is None:
+        return jsonify({"error": "Drift service not available"}), 503
+    try:
+        report = run_detect_drift()
+        return jsonify(report), 200
+    except Exception as e:
+        logger.exception("event=drift_report_failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/drift/simulate")
+def api_drift_simulate():
+    if run_simulate_data is None:
+        return jsonify({"error": "Drift service not available"}), 503
+    mode = request.args.get("mode") or (request.get_json(silent=True) or {}).get("mode", "stable")
+    try:
+        sim_result = run_simulate_data(mode=mode)
+        report = run_detect_drift()
+        sim_result["report"] = report
+        return jsonify(sim_result), 200
+    except Exception as e:
+        logger.exception("event=drift_simulate_failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/drift/detect")
+def api_drift_detect():
+    if run_detect_drift is None:
+        return jsonify({"error": "Drift service not available"}), 503
+    try:
+        report = run_detect_drift()
+        return jsonify(report), 200
+    except Exception as e:
+        logger.exception("event=drift_detect_failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/drift/retrain")
+def api_drift_retrain():
+    if run_retrain_candidate is None:
+        return jsonify({"error": "Drift service not available"}), 503
+    try:
+        retrain_result = run_retrain_candidate()
+        return jsonify(retrain_result), 200
+    except Exception as e:
+        logger.exception("event=drift_retrain_failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.post("/api/drift/approve")
+def api_drift_approve():
+    global model
+    if run_approve_candidate is None:
+        return jsonify({"error": "Drift service not available"}), 503
+    try:
+        approval_result = run_approve_candidate()
+        if approval_result.get("promoted"):
+            model = load_model()
+        return jsonify(approval_result), 200
+    except Exception as e:
+        logger.exception("event=drift_approve_failed")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.errorhandler(404)

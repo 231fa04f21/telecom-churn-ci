@@ -92,6 +92,17 @@ class TestPredictionApplication(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIn("X-Request-ID", response.headers)
 
+    def test_drift_dashboard_endpoint(self):
+        response = self.client.get("/drift")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Data Drift", response.data)
+
+    def test_drift_report_endpoint(self):
+        response = self.client.get("/api/drift/report")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("overall_drift", response.get_json())
+        self.assertIn("features", response.get_json())
+
 
 if __name__ == "__main__":
     unittest.main()
