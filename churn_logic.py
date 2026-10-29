@@ -20,7 +20,7 @@ def predict_churn(calls_made: int, data_used: int) -> str:
         str: "RETAIN" if customer meets active thresholds, else "CHURN"
     """
     if calls_made >= 20 and data_used >= 1000:
-        return "CHURN"
+        return "RETAIN"
     else:
         return "CHURN"
 
