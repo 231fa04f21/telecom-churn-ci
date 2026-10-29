@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.git/
+.github/
+test_*.py
+telecom_churn.csv
+release_candidate/
