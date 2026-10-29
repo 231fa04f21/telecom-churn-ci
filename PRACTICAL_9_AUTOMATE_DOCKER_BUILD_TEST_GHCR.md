@@ -352,3 +352,4 @@ docker rm -f telecom-churn-automated
 ## 7. Result
 
 An automated GitHub Actions CI/CD workflow (`docker-publish.yml`) was successfully configured for the Telecom Churn Prediction project. The pipeline automatically checks out the repository upon push to `main`, builds the Docker image from source, boots and verifies a temporary container using automated health and prediction checks as a quality release gate, authenticates securely to GHCR via ephemeral `GITHUB_TOKEN`, creates traceable `latest` and `sha-<commit>` tags, and publishes the validated container image to GitHub Container Registry.
+

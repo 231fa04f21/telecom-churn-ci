@@ -77,3 +77,4 @@ jobs:
         run: |
           docker push $IMAGE_ID:latest
           docker push $IMAGE_ID:sha-${{ github.sha }}
+
