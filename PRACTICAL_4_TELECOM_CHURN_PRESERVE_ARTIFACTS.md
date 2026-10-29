@@ -252,3 +252,4 @@ The Telecom Customer Churn CI workflow was successfully extended to preserve val
 
 ### Next Practical Preview (Practical - 5):
 **Continuous Delivery / Model Deployment Application**: Preparing the validated Telecom Churn model for consumption by creating a prediction web service and automating its delivery.
+

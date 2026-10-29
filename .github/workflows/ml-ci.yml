@@ -1,4 +1,4 @@
-name: Telecom Churn ML CI
+name: Telecom Churn ML CI-CD
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  train-and-test:
+  train-test-deliver:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +28,7 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
-      - name: Install ML dependencies
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Train telecom churn model
@@ -40,13 +40,22 @@ jobs:
       - name: Run automated ML tests
         run: python -m unittest test_ml_pipeline.py -v
 
-      - name: Upload validated ML artifacts
+      - name: Run prediction application tests
+        run: python -m unittest test_app.py -v
+
+      - name: Prepare release candidate
+        run: |
+          mkdir -p release_candidate
+          cp app.py release_candidate/
+          cp telecom_churn_model.pkl release_candidate/
+          cp metrics.json release_candidate/
+          cp requirements.txt release_candidate/
+          printf "Telecom Customer Churn Prediction ML Application\nRun: python app.py\nEndpoint: POST /predict\n" > release_candidate/DEPLOYMENT.txt
+
+      - name: Upload release candidate
         uses: actions/upload-artifact@v4
         with:
-          name: telecom-churn-ml-artifacts
-          path: |
-            telecom_churn_model.pkl
-            metrics.json
-            telecom_churn.csv
+          name: telecom-churn-ml-release
+          path: release_candidate/
           if-no-files-found: error
           retention-days: 7

@@ -6,6 +6,7 @@ __pycache__/
 # Generated ML Artifacts (created during CI / runtime)
 telecom_churn_model.pkl
 metrics.json
+release_candidate/
 
 # Environments
 .venv/
