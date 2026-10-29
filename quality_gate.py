@@ -7,7 +7,7 @@ import json
 import sys
 
 # Minimum acceptable accuracy threshold for deployment consideration
-MINIMUM_ACCURACY = 0.50
+MINIMUM_ACCURACY = 0.90
 
 print("Reading model evaluation metrics...")
 
