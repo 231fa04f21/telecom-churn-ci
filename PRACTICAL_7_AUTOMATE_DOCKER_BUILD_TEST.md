@@ -279,3 +279,4 @@ docker stop telecom-churn-ml-container ; docker rm telecom-churn-ml-container
 
 **Practical-8: Push Validated Docker Image to Container Registry (GHCR)**:  
 Practical 8 will authenticate to GitHub Container Registry (GHCR) and automatically push the verified Docker image so it can be deployed to production environments.
+
