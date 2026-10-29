@@ -408,3 +408,4 @@ kubectl get pods
 ## 9. Result
 
 The tested Telecom Churn Prediction API was deployed to a local Kubernetes cluster using Minikube. The application was exposed through a NodePort Service, validated across all endpoints, scaled to 3 replicas with load balancing across EndpointSlices, demonstrated automated self-healing upon Pod deletion, and executed zero-downtime rolling updates and rollbacks.
+

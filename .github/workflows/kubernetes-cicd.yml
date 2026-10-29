@@ -1,0 +1,123 @@
+name: Telecom Churn Prediction - Kubernetes CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: telecom-churn-prediction
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ steps.image.outputs.image_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create immutable image reference
+        id: image
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_REF="${REGISTRY}/${OWNER_LOWER}/${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_ID=${REGISTRY}/${OWNER_LOWER}/${IMAGE_NAME}" >> "$GITHUB_ENV"
+
+      - name: Build Docker image for testing
+        run: |
+          docker build -t telecom-churn-prediction:test .
+
+      - name: Start test container
+        run: |
+          docker run -d --name telecom-churn-test \
+            -p 5000:5000 telecom-churn-prediction:test
+
+      - name: Wait for health endpoint
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:5000/health; then
+              echo "Container health test passed"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs telecom-churn-test
+          exit 1
+
+      - name: Test prediction endpoint
+        run: |
+          curl --fail --silent \
+            -X POST http://127.0.0.1:5000/predict \
+            -H "Content-Type: application/json" \
+            --data @test_payload.json
+
+      - name: Run existing automated tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+          python -m unittest discover -q
+
+      - name: Stop test container
+        if: always()
+        run: docker rm -f telecom-churn-test || true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag tested image
+        run: |
+          docker tag telecom-churn-prediction:test ${IMAGE_ID}:sha-${GITHUB_SHA}
+          docker tag telecom-churn-prediction:test ${IMAGE_ID}:latest
+
+      - name: Push tested image to GHCR
+        run: |
+          docker push ${IMAGE_ID}:sha-${GITHUB_SHA}
+          docker push ${IMAGE_ID}:latest
+
+  deploy-kubernetes:
+    needs: build-test-push
+    runs-on: self-hosted
+    steps:
+      - name: Verify Kubernetes cluster
+        run: |
+          kubectl config current-context
+          kubectl get nodes
+
+      - name: Show current deployment image
+        run: |
+          kubectl get deployment telecom-churn-prediction -o jsonpath="{.spec.template.spec.containers[0].image}"
+
+      - name: Deploy the tested image
+        run: |
+          kubectl set image deployment/telecom-churn-prediction telecom-churn-api=${{ needs.build-test-push.outputs.image_ref }}
+
+      - name: Wait for Kubernetes rollout
+        run: |
+          kubectl rollout status deployment/telecom-churn-prediction --timeout=180s
+
+      - name: Verify health through the Kubernetes Service
+        run: |
+          kubectl exec deployment/telecom-churn-prediction -- python -c "import urllib.request; print(urllib.request.urlopen('http://telecom-churn-prediction-service/health', timeout=10).read().decode())"
+
+      - name: Show deployed image and Pods
+        run: |
+          kubectl get deployment telecom-churn-prediction -o wide
+          kubectl get pods -o wide
+
+      - name: Roll back if deployment verification fails
+        if: failure()
+        run: |
+          kubectl rollout undo deployment/telecom-churn-prediction
+          kubectl rollout status deployment/telecom-churn-prediction --timeout=180s
+
