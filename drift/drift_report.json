@@ -1,0 +1,57 @@
+{
+  "method": "two-sample KS test",
+  "p_value_threshold": 0.05,
+  "min_drifted_features": 2,
+  "drifted_feature_count": 4,
+  "drifted_features": [
+    "age",
+    "estimated_salary",
+    "calls_made",
+    "data_used"
+  ],
+  "overall_drift": true,
+  "features": {
+    "age": {
+      "ks_statistic": 0.317774,
+      "p_value": 0.0,
+      "drift_detected": true,
+      "reference_mean": 46.0776,
+      "current_mean": 62.882
+    },
+    "num_dependents": {
+      "ks_statistic": 0.017584,
+      "p_value": 0.912291,
+      "drift_detected": false,
+      "reference_mean": 1.9975,
+      "current_mean": 1.964
+    },
+    "estimated_salary": {
+      "ks_statistic": 0.346779,
+      "p_value": 0.0,
+      "drift_detected": true,
+      "reference_mean": 85021.1378,
+      "current_mean": 59793.307
+    },
+    "calls_made": {
+      "ks_statistic": 0.575289,
+      "p_value": 0.0,
+      "drift_detected": true,
+      "reference_mean": 49.0105,
+      "current_mean": 19.487
+    },
+    "sms_sent": {
+      "ks_statistic": 0.021917,
+      "p_value": 0.716435,
+      "drift_detected": false,
+      "reference_mean": 23.9454,
+      "current_mean": 23.474
+    },
+    "data_used": {
+      "ks_statistic": 0.421669,
+      "p_value": 0.0,
+      "drift_detected": true,
+      "reference_mean": 4993.186,
+      "current_mean": 9070.3998
+    }
+  }
+}
