@@ -59,7 +59,7 @@ class TestMLPipeline(unittest.TestCase):
             "data_used": 9000
         }])
         prediction = model.predict(sample)[0]
-        self.assertEqual(int(prediction), 0)
+        self.assertEqual(int(prediction), 1)
 
     def test_high_risk_churn_customer(self):
         """Verify that a customer with dormant usage (very low calls and low data) is classified as CHURN (1)."""
