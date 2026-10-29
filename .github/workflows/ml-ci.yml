@@ -45,7 +45,7 @@ jobs:
         with:
           name: telecom-churn-ml-artifacts
           path: |
-            telecom_churn_model.pkl
+            telecom_churn_model_missing.pkl
             metrics.json
             telecom_churn.csv
           if-no-files-found: error
