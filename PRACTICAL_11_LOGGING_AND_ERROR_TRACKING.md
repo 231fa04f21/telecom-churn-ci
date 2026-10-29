@@ -327,3 +327,4 @@ WARNING | telecom-churn-api | event=http_request request_id=... method=GET path=
 ## 9. Result
 
 Application logging and error tracking were implemented in the Telecom Churn Prediction API service (`app.py`). Startup events, HTTP access logs with request IDs and latencies, input validation failures (422), route not found warnings (404), and safe prediction metrics were verified locally via unit tests and in the cloud on Render via centralized runtime logs.
+

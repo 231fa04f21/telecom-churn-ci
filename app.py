@@ -1,5 +1,5 @@
 """
-Flask Prediction API with Structured Logging & Error Tracking
+Flask Prediction API with Structured Logging, Error Tracking & Swagger UI (/docs)
 MLOps Practical 11 - Logging and Error Tracking for Deployed Telecom Churn API
 """
 
@@ -98,6 +98,159 @@ def health_check():
         "status": "ok",
         "service": "telecom-churn-prediction"
     }), 200
+
+
+# OpenAPI Specification for Swagger UI
+@app.get("/openapi.json")
+def openapi_spec():
+    return jsonify({
+        "openapi": "3.0.2",
+        "info": {
+            "title": "Telecom Churn Prediction API",
+            "version": "1.0.0",
+            "description": "Interactive API documentation for Telecom Customer Churn Prediction"
+        },
+        "paths": {
+            "/health": {
+                "get": {
+                    "summary": "Health Check",
+                    "operationId": "health_check_health_get",
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": {
+                                "application/json": {
+                                    "example": {
+                                        "status": "ok",
+                                        "service": "telecom-churn-prediction"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "/predict": {
+                "post": {
+                    "summary": "Predict",
+                    "operationId": "predict_predict_post",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TelecomChurnInput"
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Successful Response",
+                            "content": {
+                                "application/json": {
+                                    "example": {
+                                        "prediction": "CHURN",
+                                        "prediction_code": 1
+                                    }
+                                }
+                            }
+                        },
+                        "422": {
+                            "description": "Validation Error",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "$ref": "#/components/schemas/HTTPValidationError"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "TelecomChurnInput": {
+                    "title": "TelecomChurnInput",
+                    "required": [
+                        "age",
+                        "num_dependents",
+                        "estimated_salary",
+                        "calls_made",
+                        "sms_sent",
+                        "data_used"
+                    ],
+                    "type": "object",
+                    "properties": {
+                        "age": {"title": "Age", "type": "integer", "example": 70},
+                        "num_dependents": {"title": "Num Dependents", "type": "integer", "example": 0},
+                        "estimated_salary": {"title": "Estimated Salary", "type": "number", "example": 30000},
+                        "calls_made": {"title": "Calls Made", "type": "integer", "example": 5},
+                        "sms_sent": {"title": "Sms Sent", "type": "integer", "example": 2},
+                        "data_used": {"title": "Data Used", "type": "number", "example": 100}
+                    }
+                },
+                "HTTPValidationError": {
+                    "title": "HTTPValidationError",
+                    "type": "object",
+                    "properties": {
+                        "detail": {
+                            "title": "Detail",
+                            "type": "string",
+                            "example": "Missing required fields"
+                        },
+                        "missing_fields": {
+                            "title": "Missing Fields",
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": ["body.num_dependents", "body.estimated_salary"]
+                        }
+                    }
+                }
+            }
+        }
+    })
+
+
+# Swagger UI Interactive Documentation Endpoint
+@app.get("/docs")
+def swagger_ui():
+    html_content = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Telecom Churn Prediction API - Swagger UI</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
+    <link rel="shortcut icon" href="https://fastapi.tiangolo.com/img/favicon.png">
+    <style>
+        html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+        *, *:before, *:after { box-sizing: inherit; }
+        body { margin:0; background: #fafafa; }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+    window.onload = function() {
+        window.ui = SwaggerUIBundle({
+            url: "/openapi.json",
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIBundle.SwaggerUIStandalonePreset
+            ],
+            layout: "BaseLayout"
+        });
+    };
+    </script>
+</body>
+</html>"""
+    return html_content, 200, {"Content-Type": "text/html"}
 
 
 # Step 7 & 8 - Prediction Endpoint with Safe Logging & Validation Tracking

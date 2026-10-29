@@ -71,6 +71,16 @@ class TestPredictionApplication(unittest.TestCase):
         self.assertIn("missing_fields", response.get_json())
         self.assertIn("X-Request-ID", response.headers)
 
+    def test_docs_endpoint(self):
+        response = self.client.get("/docs")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"swagger-ui", response.data)
+
+    def test_openapi_json(self):
+        response = self.client.get("/openapi.json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["openapi"], "3.0.2")
+
     def test_unknown_route(self):
         response = self.client.get("/not-a-real-route")
         self.assertEqual(response.status_code, 404)
