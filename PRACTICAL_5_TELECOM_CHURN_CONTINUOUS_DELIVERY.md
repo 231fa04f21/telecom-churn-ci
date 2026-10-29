@@ -393,3 +393,4 @@ release_candidate/
 ## 8. Next Practical Preview
 
 **Practical-6: Dockerize the ML Application**: Practical 6 introduces containerization with Docker so that the packaged release candidate runs in an identical container environment across development, staging, and production.
+
