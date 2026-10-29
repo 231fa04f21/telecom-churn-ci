@@ -466,3 +466,4 @@ To simulate an automated quality gate failure:
 - [x] All 7 automated unit tests pass locally and in CI.
 - [x] Intentional defect produces red failure in CI.
 - [x] Restoring correct assertion returns CI to green.
+
