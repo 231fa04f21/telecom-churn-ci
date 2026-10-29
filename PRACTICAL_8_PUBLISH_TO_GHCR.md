@@ -224,3 +224,4 @@ docker logout ghcr.io
    `v1` is an immutable version identifier for reproducibility, while `latest` is a convenient rolling pointer pointing to the most recent release.
 4. **Why is model retraining unnecessary in this practical?**  
    Because Practical 8 focuses exclusively on artifact distribution. The verified model artifact from Practical 7 is already packaged inside the Docker image.
+
