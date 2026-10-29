@@ -285,3 +285,4 @@ This experiment proves why `-p 5000:5000` is required:
 
 **Practical-7: Automatically Build and Test the Docker Image using GitHub Actions**:  
 Practical 7 will move the `docker build` and container endpoint testing steps from the local machine directly into the **GitHub Actions cloud runner**, completing automated container CI/CD.
+

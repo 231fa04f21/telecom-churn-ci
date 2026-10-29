@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  train-test-deliver:
+  train-test-containerize:
     runs-on: ubuntu-latest
 
     steps:
@@ -43,21 +43,51 @@ jobs:
       - name: Run prediction application tests
         run: python -m unittest test_app.py -v
 
-      - name: Prepare release candidate
-        run: |
-          mkdir -p release_candidate
-          cp app.py release_candidate/
-          cp telecom_churn_model.pkl release_candidate/
-          cp metrics.json release_candidate/
-          cp requirements.txt release_candidate/
-          cp Dockerfile release_candidate/
-          cp .dockerignore release_candidate/
-          printf "Telecom Customer Churn Prediction ML Application\nRun: python app.py\nEndpoint: POST /predict\n" > release_candidate/DEPLOYMENT.txt
+      - name: Build Docker image
+        run: docker build -t telecom-churn-ml:${{ github.sha }} .
 
-      - name: Upload release candidate
-        uses: actions/upload-artifact@v4
-        with:
-          name: telecom-churn-ml-release
-          path: release_candidate/
-          if-no-files-found: error
-          retention-days: 7
+      - name: Start Docker container
+        run: |
+          docker run -d \
+            --name telecom-churn-ml-container \
+            -p 5000:5000 \
+            telecom-churn-ml:${{ github.sha }}
+
+      - name: Wait for application to become ready
+        run: |
+          for i in {1..15}; do
+            if curl --fail --silent http://localhost:5000/health; then
+              echo "Application is ready."
+              exit 0
+            fi
+            echo "Waiting for application... attempt $i"
+            sleep 2
+          done
+          echo "Application did not become ready."
+          docker logs telecom-churn-ml-container
+          exit 1
+
+      - name: Test prediction endpoint
+        run: |
+          response=$(curl --fail --silent --show-error \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{
+              "age": 25,
+              "num_dependents": 4,
+              "estimated_salary": 140000,
+              "calls_made": 90,
+              "sms_sent": 50,
+              "data_used": 9000
+            }' \
+            http://localhost:5000/predict)
+          echo "Prediction response: $response"
+          echo "$response" | grep -q '"prediction"'
+
+      - name: Show Docker container logs
+        if: always()
+        run: docker logs telecom-churn-ml-container || true
+
+      - name: Stop and remove Docker container
+        if: always()
+        run: docker rm -f telecom-churn-ml-container || true

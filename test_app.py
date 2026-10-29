@@ -18,6 +18,11 @@ class TestPredictionApplication(unittest.TestCase):
         self.assertEqual(response.get_json()["status"], "ok")
         self.assertEqual(response.get_json()["service"], "telecom-churn-prediction")
 
+    def test_health_endpoint_alias(self):
+        response = self.client.get("/health")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["status"], "ok")
+
     def test_low_risk_retained_prediction(self):
         response = self.client.post(
             "/predict",
