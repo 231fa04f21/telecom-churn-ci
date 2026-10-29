@@ -214,7 +214,7 @@ Image-backed Render services do not automatically redeploy merely because the mu
 | **Render source** | `Existing Image` is selected | Deployed via image reference without source rebuild | PASS |
 | **Image access** | Render verifies access to GHCR image | Image pulled successfully from registry | PASS |
 | **Service deployment** | Web Service becomes live/running | Status indicates `Live` with green indicator | PASS |
-| **Public URL** | Unique `onrender.com` URL is assigned | Assigned HTTPS domain reachable worldwide | PASS |
+| **Public URL** | Unique `onrender.com` URL is assigned | `https://telecom-churn-prediction-h5fs.onrender.com` | PASS |
 | **Root endpoint** | `/` returns expected running status | HTTP 200 OK with `service` and `status` | PASS |
 | **Health endpoint** | `/health` returns expected health status | HTTP 200 OK used by cloud orchestrator | PASS |
 | **Prediction endpoint** | `/predict` returns valid prediction | Evaluates feature payload and returns CHURN/RETAIN | PASS |
@@ -302,3 +302,4 @@ Image-backed Render services do not automatically redeploy merely because the mu
 ## 10. Result
 
 The tested Telecom Churn Prediction container image (`ghcr.io/231fa04f21/telecom-churn-prediction:latest`) produced and published by GitHub Actions in Practical 9 was deployed to a cloud Render Web Service. The deployed service was verified through public HTTPS requests to `/`, `/health`, and `/predict`, successfully performing machine learning inference in the cloud.
+
