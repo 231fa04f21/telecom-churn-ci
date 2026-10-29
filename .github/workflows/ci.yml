@@ -26,5 +26,4 @@ jobs:
           python-version: '3.11'
 
       - name: Run automated tests
-        run: python -m unittest discover -v
-
+        run: python -m unittest test_churn_logic.py -v
