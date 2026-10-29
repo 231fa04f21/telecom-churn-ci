@@ -257,3 +257,4 @@ To safely observe an alert rule transition from **Inactive $\rightarrow$ Pending
 ## 8. Result
 
 The deployed Telecom Churn Prediction API was instrumented with Prometheus metrics (`/metrics`). A monitoring stack comprising Prometheus and Grafana was configured locally in Docker. Prometheus successfully scrapes the live Render service over HTTPS (target UP). A Grafana operational dashboard was constructed with six panels, and an alert rule for client error spikes was demonstrated.
+

@@ -18,3 +18,4 @@ groups:
         annotations:
           summary: "Telecom Churn API monitoring target is down"
           description: "Prometheus cannot scrape the deployed API."
+

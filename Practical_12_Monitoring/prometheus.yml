@@ -12,3 +12,4 @@ scrape_configs:
     static_configs:
       - targets:
           - "telecom-churn-prediction-h5fs.onrender.com"
+
