@@ -81,6 +81,12 @@ class TestPredictionApplication(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["openapi"], "3.0.2")
 
+    def test_metrics_endpoint(self):
+        response = self.client.get("/metrics")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"student_api_model_loaded 1.0", response.data)
+        self.assertIn(b"student_api_http_requests_total", response.data)
+
     def test_unknown_route(self):
         response = self.client.get("/not-a-real-route")
         self.assertEqual(response.status_code, 404)
